@@ -1,0 +1,12 @@
+
+RepurposeML: a python package for reproducible ml based drug repurposing / the curse of data imbalance / investigating the effect of data imbalance of ml based methods in drug repurposing 
+
+- many methods were proposed, almost none provide code / model used in the study
+- to improve reproducibility
+- AUC widely used, albeit its limitations in characterizing predictability of ml based drug repurposing
+- repurposing highly imbalanced problem
+- even simple as knn can do good
+- inverse correlation interpretability accuracy
+- knn se + target + chem svm
+- effect of data imbalance (size & cv insignifincant)
+
