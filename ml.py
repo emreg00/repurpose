@@ -1,6 +1,6 @@
 
 import os, cPickle, numpy, random
-from toolbox import TsvReader
+from toolbox import TsvReader, configuration
 # ML related
 from sklearn import preprocessing
 from sklearn import tree
@@ -9,19 +9,16 @@ from sklearn import cross_validation
 from sklearn.metrics import roc_curve, auc
 from scipy import interp
 
-#base_dir = "/home/eguney/Dropbox/collaboration/"
-#base_dir = "/Users/eguney/Dropbox/collaboration/"
-base_dir = "/home/eguney/data/gottlieb/zhang/"
-
+CONFIG = configuration.Configuration() 
+#base_dir = "/home/eguney/data/gottlieb/zhang/"
 
 def main():
-    #n_seed = 51234 
-    #n_seed = 234 
-    #!
-    #random.seed(n_seed) 
     #check_ml_all()
+    n_seed = int(CONFIG.get("random_seed"))
+    #random.seed(n_seed) #!
+    n_run = int(CONFIG.get("n_run"))
     values = []
-    for i in xrange(5): 
+    for i in xrange(n_run): 
 	val = check_ml()
 	values.append(val)
     print numpy.mean(values), values
@@ -36,7 +33,8 @@ def get_zhang_data():
     Add 'Drug' as the first column header
     """
     # Get disease data
-    file_name = base_dir + "drug_disease.dat"
+    #file_name = base_dir + "drug_disease.dat"
+    file_name = CONFIG.get("drug_disease_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     disease_to_index, drug_to_values = parser.read(fields_to_include=None,)
     drugs = set(drug_to_values.keys())
@@ -45,7 +43,8 @@ def get_zhang_data():
     #print disease_to_index["acromegaly"]
     #print drug_to_values["carnitine"]
     # Get SE data
-    file_name = base_dir + "drug_sider.dat"
+    #file_name = base_dir + "drug_sider.dat"
+    file_name = CONFIG.get("drug_side_effect_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     se_to_index, drug_to_values_se = parser.read(fields_to_include=None)
     drugs &= set(drug_to_values_se.keys())
@@ -54,14 +53,16 @@ def get_zhang_data():
     # Consider common drugs only
     print len(drugs)
     # Get structure data
-    file_name = base_dir + "drug_structure.dat"
+    #file_name = base_dir + "drug_structure.dat"
+    file_name = CONFIG.get("drug_structure_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     structure_to_index, drug_to_values_structure = parser.read(fields_to_include=None)
     print len(drug_to_values_structure), len(structure_to_index)
     drugs &= set(drug_to_values_structure.keys())
     print len(drugs)
     # Get target data
-    file_name = base_dir + "drug_protein.dat"
+    #file_name = base_dir + "drug_protein.dat"
+    file_name = CONFIG.get("drug_target_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     target_to_index, drug_to_values_target = parser.read(fields_to_include=None)
     print len(drug_to_values_target), len(target_to_index)
@@ -108,7 +109,7 @@ def balance_data(pairs, classes):
     #indices_true = indices_true[:100] 
     indices_false = numpy.where(classes == 0)[0]#.tolist()
     numpy.random.shuffle(indices_false)
-    n_proportion = 1 #!
+    n_proportion = int(CONFIG.get("n_proportion"))
     indices = indices_false[:(n_proportion*indices_true.shape[0])]
     print len(indices), len(indices_true), len(indices_false)
     pairs = numpy.array(pairs)
@@ -126,7 +127,7 @@ def check_ml():
     drug_to_index, M_similarity_chemical = get_similarity(drugs, drug_to_values_structure)
     drug_to_index, M_similarity_target = get_similarity(drugs, drug_to_values_target)
     pairs, classes = balance_data(pairs, classes)
-    n_fold = 5 #!
+    n_fold = int(CONFIG.get("n_fold"))
     cv = cross_validation.StratifiedKFold(classes, n_folds=n_fold, shuffle=True)
     clf = svm.SVC(kernel='linear', probability=True, C=1)
     all_auc = []
