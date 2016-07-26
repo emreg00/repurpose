@@ -8,6 +8,7 @@ from sklearn import svm, linear_model
 from sklearn import cross_validation
 from sklearn.metrics import roc_curve, auc
 from scipy import interp
+import time
 
 CONFIG = configuration.Configuration() 
 #base_dir = "/home/eguney/data/gottlieb/zhang/"
@@ -18,10 +19,12 @@ def main():
     #random.seed(n_seed) # for reproducibility
     n_run = int(CONFIG.get("n_run"))
     values = []
-    #prediction_type = "disease"
-    prediction_type = "side effect"
+    #prediction_type = "side effect" #"disease"
+    prediction_type = CONFIG.get("prediction_type")
+    recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") #True #!
+    disjoint_cv = CONFIG.get_boolean("disjoint_cv") #True #! 
     for i in xrange(n_run): 
-	val = check_ml(prediction_type)
+	val = check_ml(prediction_type, recalculate_similarity, disjoint_cv)
 	values.append(val)
     print numpy.mean(values), values
     return
@@ -127,27 +130,36 @@ def balance_data_and_get_cv(pairs, classes, disjoint=False):
     n_subset = int(CONFIG.get("n_subset")) # for faster results - subsampling
     classes = numpy.array(classes)
     pairs = numpy.array(pairs)
-    if n_subset == -1: # use all data
-	n_subset = len(classes)
     idx_true_list = [ list() for i in xrange(n_fold) ]
     idx_false_list = [ list() for i in xrange(n_fold) ]
     if disjoint:
 	# Get train & test such that no drug in train is in test
-	def get_groups(idx_true_list, idx_false_list, n_subset, shuffle=False):
+	def get_groups(idx_true_list, idx_false_list, n_subset, n_proportion=1, shuffle=False):
+	    """
+	    >>> a = get_groups([[13,2,1],[14,3,4],[15,5,6]], [[7,8],[9,10],[11,12]], 1, 1, True)
+	    """
 	    n = len(idx_true_list)
+	    if n_subset != -1:
+		n_subset = n_subset / n 
 	    for i in xrange(n):
-		if shuffle:
-		    indices_test = random.sample(idx_true_list[i], n_subset) + random.sample(idx_false_list[i], n_subset)
+		if n_subset == -1: # use all data
+		    indices_test = idx_true_list[i] + idx_false_list[i][:n_proportion * len(idx_true_list[i])]
 		else:
-		    indices_test = idx_true_list[i][:n_subset] + idx_false_list[i][:n_subset]
+		    if shuffle:
+			indices_test = random.sample(idx_true_list[i], n_subset) + random.sample(idx_false_list[i], n_proportion * n_subset)
+		    else:
+			indices_test = idx_true_list[i][:n_subset] + idx_false_list[i][:(n_proportion * n_subset)]
 		indices_train = []
 		for j in xrange(n):
 		    if i == j:
 			continue
-		    if shuffle:
-			indices_train += random.sample(idx_true_list[j], n_subset) + random.sample(idx_false_list[j], n_subset)
+		    if n_subset == -1: # use all data
+			indices_train += idx_true_list[j] + idx_false_list[j][:n_proportion * len(idx_true_list[j])]
 		    else:
-			indices_train += idx_true_list[j][:n_subset] + idx_false_list[j][:n_subset]
+			if shuffle:
+			    indices_train += random.sample(idx_true_list[j], n_subset) + random.sample(idx_false_list[j], n_proportion * n_subset)
+			else:
+			    indices_train += idx_true_list[j][:n_subset] + idx_false_list[j][:(n_proportion * n_subset)]
 		yield indices_train, indices_test
 	for idx, (pair, class_) in enumerate(zip(pairs, classes)):
 	    drug, disease = pair
@@ -156,14 +168,17 @@ def balance_data_and_get_cv(pairs, classes, disjoint=False):
 		idx_false_list[i].append(idx)
 	    else:
 		idx_true_list[i].append(idx)
-	cv = get_groups(idx_true_list, idx_false_list, n_subset, shuffle=True)
+	print "+/-:", map(len, idx_true_list), map(len, idx_false_list)
+	cv = get_groups(idx_true_list, idx_false_list, n_subset, n_proportion, shuffle=True)
     else:
 	indices_true = numpy.where(classes == 1)[0]
 	indices_false = numpy.where(classes == 0)[0]
+	if n_subset == -1: # use all data
+		n_subset = len(classes)
 	indices_true = indices_true[:n_subset]
 	numpy.random.shuffle(indices_false)
 	indices = indices_false[:(n_proportion*indices_true.shape[0])]
-	print len(indices), len(indices_true), len(indices_false)
+	print "+/-:", len(indices_true), len(indices), len(indices_false)
 	pairs = numpy.concatenate((pairs[indices_true], pairs[indices]), axis=0)
 	classes = numpy.concatenate((classes[indices_true], classes[indices]), axis=0) 
 	#print pairs[classes==1] 
@@ -172,7 +187,104 @@ def balance_data_and_get_cv(pairs, classes, disjoint=False):
     return pairs, classes, cv
 
 
-def check_ml(prediction_type):
+def get_scores_and_labels(pairs, classes, drug_to_disease_to_scores):
+    values = []
+    for drug, disease in pairs:
+	scores = drug_to_disease_to_scores[drug][disease]
+	values.append(scores)
+    X = numpy.asmatrix(values).reshape((len(values),len(values[0])))
+    y = numpy.array(classes) 
+    return X, y
+
+
+def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name=None):
+    if file_name is not None and os.path.exists(file_name):
+	drug_to_disease_to_scores = cPickle.load(open(file_name))
+    else:
+	knn = int(CONFIG.get("knn"))
+	drug_to_disease_to_scores = {}
+	if approach == "all_vs_all":
+	#if pairs_train is None and pairs_test is None:
+	    for drug1 in drugs:
+		idx1 = drug_to_index[drug1]
+		drug_to_disease_to_scores[drug1] = {}
+		for disease, drugs_gold in disease_to_drugs.iteritems():
+		    scores = []
+		    for M_similarity in list_M_similarity:
+			vals = []
+			for drug2 in drugs:
+			    if drug1 == drug2:
+				continue
+			    idx2 = drug_to_index[drug2]
+			    vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
+			vals.sort()
+			score = 0
+			for sim, val in vals[-knn:]:
+			    score += sim*val
+			scores.append(score)
+		    drug_to_disease_to_scores[drug1][disease] = scores
+	elif approach == "train_test_vs_train_test":
+	    #elif pairs_train is not None and pairs_test is not None:
+	    drugs = set(zip(*pairs_train)[0])
+	    drugs |= set(zip(*pairs_test)[0]) #reduce(lambda x,y: x|y, disease_to_drugs.values())
+	    pairs_train = set((k, v) for k,v in pairs_train) 
+	    pairs_test = set((k, v) for k,v in pairs_test) 
+	    pairs = pairs_train | pairs_test
+	    disease_to_drugs_train = disease_to_drugs.copy()
+	    for drug, disease in pairs_test:
+		# Remove the test drug from the gold standard to unify the score calculation below
+		drugs_gold = disease_to_drugs_train[disease] - set([drug])
+		disease_to_drugs_train[disease] = drugs_gold
+	    for drug1, disease in pairs:
+		drugs_gold = disease_to_drugs_train[disease]
+		idx1 = drug_to_index[drug1]
+		scores = []
+		for M_similarity in list_M_similarity:
+		    vals = []
+		    for drug2 in drugs:
+			if drug1 == drug2:
+			    continue
+			idx2 = drug_to_index[drug2]
+			vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
+		    vals.sort()
+		    score = 0
+		    for sim, val in vals[-knn:]: 
+			score += sim*val
+		    scores.append(score)
+		d = drug_to_disease_to_scores.setdefault(drug1, {})
+		d[disease] = scores
+	elif approach == "train_vs_train":
+	#elif pairs_test is None:
+	    drugs = set(zip(*pairs_train)[0])
+	    pairs_train = set((k, v) for k,v in pairs_train) 
+	    for drug1 in drugs:
+		idx1 = drug_to_index[drug1]
+		drug_to_disease_to_scores[drug1] = {}
+		for disease, drugs_gold in disease_to_drugs.iteritems():
+		    if (drug1, disease) not in pairs_train: 
+			continue
+		    drugs_gold &= drugs
+		    scores = []
+		    for M_similarity in list_M_similarity:
+			vals = []
+			for drug2 in drugs:
+			    if drug1 == drug2:
+				continue
+			    idx2 = drug_to_index[drug2]
+			    vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
+			vals.sort()
+			score = 0
+			for sim, val in vals[-knn:]:
+			    score += sim*val
+			scores.append(score)
+		    drug_to_disease_to_scores[drug1][disease] = scores
+	if file_name is not None:
+	    cPickle.dump(drug_to_disease_to_scores, open(file_name, 'w'))
+    #print drug_to_disease_to_scores["carnitine"]["asthma"]
+    return drug_to_disease_to_scores
+
+
+def check_ml(prediction_type, recalculate_similarity, disjoint_cv):
     drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
     if prediction_type == "disease":
 	disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
@@ -186,7 +298,8 @@ def check_ml(prediction_type):
     drug_to_index, M_similarity_se = get_similarity(drugs, drug_to_values_se)
     drug_to_index, M_similarity_chemical = get_similarity(drugs, drug_to_values_structure)
     drug_to_index, M_similarity_target = get_similarity(drugs, drug_to_values_target)
-    pairs, classes, cv = balance_data_and_get_cv(pairs, classes, disjoint = True) #!
+    pairs, classes, cv = balance_data_and_get_cv(pairs, classes, disjoint = disjoint_cv) 
+    #drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name) # use all the info
     #clf = svm.SVC(kernel='linear', probability=True, C=1)
     clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
     all_auc = []
@@ -198,15 +311,20 @@ def check_ml(prediction_type):
 	classes_train = classes[train] 
 	pairs_test = pairs[test]
 	classes_test = classes[test] 
-	print i, len(pairs_train), len(train), len(test)
+	print "Fold", i, len(pairs_train), len(pairs_test) #, len(train), len(test)
 	#print list(pairs_train)[:5]
-	# Using similarity scores of all drugs, not only within the subset
-	#drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_train, pairs_test = pairs_test, file_name = file_name) 
-	drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_train, pairs_test = None, file_name = file_name) 
+	prev_time = time.time() 
+	if recalculate_similarity:
+	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_train, pairs_test = None, approach = "train_vs_train", file_name = file_name) 
+	else:
+	    # Using similarity scores of all drugs, not only within the subset
+	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_train, pairs_test = pairs_test, approach = "train_test_vs_train_test", file_name = file_name) # similar to all_vs_all above, but removes the test pair
+	print "t:", time.time() - prev_time 
 	#print drug_to_disease_to_scores["trovafloxacin"]
 	X, y = get_scores_and_labels(pairs_train, classes_train, drug_to_disease_to_scores)
 	#print pairs_train[classes_train==1]
-	drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_test, pairs_test = None, file_name = file_name) 
+	if recalculate_similarity:
+	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_test, pairs_test = None, approach = "train_vs_train", file_name = file_name) 
 	X_new, y_new = get_scores_and_labels(pairs_test, classes_test, drug_to_disease_to_scores)
 	#print X_new[y_new==1,:]
 	probas_ = clf.fit(X, y).predict_proba(X_new)
@@ -217,13 +335,14 @@ def check_ml(prediction_type):
     return numpy.mean(all_auc)
 
 
+### SOMEWHAT OBSOLETE ###
 def check_ml_all():
     drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
     disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
     drug_to_index, M_similarity = get_similarity(drugs, drug_to_values_se)
     # Use all data
     file_name = base_dir + "drug_to_disease_to_scores.pcl"
-    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, M_similarity, pairs = None, file_name = file_name)
+    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, [M_similarity], pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name)
     # Create training data
     X_new, y_new = get_training_data(drug_to_disease_to_scores, disease_to_drugs)
     # Feature weights
@@ -257,16 +376,6 @@ def check_ml_all():
     #print mean_auc
     return
 
-def get_scores_and_labels(pairs, classes, drug_to_disease_to_scores):
-    values = []
-    for drug, disease in pairs:
-	scores = drug_to_disease_to_scores[drug][disease]
-	values.append(scores)
-    X = numpy.asmatrix(values).reshape((len(values),len(values[0])))
-    y = numpy.array(classes) 
-    #X, y = preprocess(X, y, scale = True)
-    return X, y
-
 def get_training_data(drug_to_disease_to_scores, disease_to_drugs):
     values = []
     classes = []
@@ -299,87 +408,6 @@ def preprocess(X, y, balance=True, scale=True):
     if scale:
 	X_new = preprocessing.scale(X_new)
     return X_new, y_new
-
-def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs_train = None, pairs_test = None, file_name=None):
-    if file_name is not None and os.path.exists(file_name):
-	drug_to_disease_to_scores = cPickle.load(open(file_name))
-    else:
-	knn = int(CONFIG.get("knn"))
-	drug_to_disease_to_scores = {}
-	if pairs_train is None and pairs_test is None:
-	    for drug1 in drugs:
-		idx1 = drug_to_index[drug1]
-		drug_to_disease_to_scores[drug1] = {}
-		for disease, drugs_gold in disease_to_drugs.iteritems():
-		    scores = []
-		    for M_similarity in list_M_similarity:
-			vals = []
-			for drug2 in drugs:
-			    if drug1 == drug2:
-				continue
-			    idx2 = drug_to_index[drug2]
-			    vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
-			vals.sort()
-			score = 0
-			for sim, val in vals[-knn:]:
-			    score += sim*val
-			scores.append(score)
-		    drug_to_disease_to_scores[drug1][disease] = scores
-	elif pairs_test is None:
-	    drugs = set(zip(*pairs_train)[0])
-	    for drug1 in drugs:
-		idx1 = drug_to_index[drug1]
-		drug_to_disease_to_scores[drug1] = {}
-		for disease, drugs_gold in disease_to_drugs.iteritems():
-		    drugs_gold &= drugs
-		    scores = []
-		    for M_similarity in list_M_similarity:
-			vals = []
-			for drug2 in drugs:
-			    if drug1 == drug2:
-				continue
-			    idx2 = drug_to_index[drug2]
-			    vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
-			vals.sort()
-			score = 0
-			for sim, val in vals[-knn:]:
-			    score += sim*val
-			scores.append(score)
-		    drug_to_disease_to_scores[drug1][disease] = scores
-	else:
-	    drugs = set(zip(*pairs_train)[0])
-	    drugs |= set(zip(*pairs_test)[0]) #reduce(lambda x,y: x|y, disease_to_drugs.values())
-	    pairs_train = set((k, v) for k,v in pairs_train) 
-	    pairs_test = set((k, v) for k,v in pairs_test) 
-	    pairs = pairs_train | pairs_test
-	    disease_to_drugs_train = disease_to_drugs.copy()
-	    for drug, disease in pairs_test:
-		#if disease in disease_to_drugs:
-		drugs_gold = disease_to_drugs_train[disease] - set([drug])
-		disease_to_drugs_train[disease] = drugs_gold
-		#disease_to_drugs_train.setdefault(disease, set()).add(drug) # before iterating over train
-	    for drug1, disease in pairs:
-		drugs_gold = disease_to_drugs_train[disease]
-		idx1 = drug_to_index[drug1]
-		scores = []
-		for M_similarity in list_M_similarity:
-		    vals = []
-		    for drug2 in drugs:
-			if drug1 == drug2:
-			    continue
-			idx2 = drug_to_index[drug2]
-			vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
-		    vals.sort()
-		    score = 0
-		    for sim, val in vals[-knn:]: 
-			score += sim*val
-		    scores.append(score)
-		d = drug_to_disease_to_scores.setdefault(drug1, {})
-		d[disease] = scores
-	if file_name is not None:
-	    cPickle.dump(drug_to_disease_to_scores, open(file_name, 'w'))
-    #print drug_to_disease_to_scores["carnitine"]["asthma"]
-    return drug_to_disease_to_scores
 
 
 if __name__ == "__main__":
