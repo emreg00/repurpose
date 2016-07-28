@@ -19,14 +19,26 @@ def main():
     #random.seed(n_seed) # for reproducibility
     n_run = int(CONFIG.get("n_run"))
     values = []
+    #!
+    knn = int(CONFIG.get("knn"))
+    model_type = CONFIG.get("model_type")
     #prediction_type = "side effect" #"disease"
     prediction_type = CONFIG.get("prediction_type")
-    recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") #True #!
-    disjoint_cv = CONFIG.get_boolean("disjoint_cv") #True #! 
+    features = set(CONFIG.get("features").split("|"))
+    recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") 
+    disjoint_cv = CONFIG.get_boolean("disjoint_cv") 
+    data = get_zhang_data()
+    model_fun = None
+    output_f = open(CONFIG.get("output_file"), 'a')
+    if output_f is not None:
+	output_f.write("type\trecalculate\tdisjoint\tvariable\tmean\tsd\n")
     for i in xrange(n_run): 
-	val = check_ml(prediction_type, recalculate_similarity, disjoint_cv)
+	val = check_ml(data, knn, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun)
 	values.append(val)
-    print numpy.mean(values), values
+    print numpy.mean(values), numpy.std(values), values
+    if output_f is not None:
+	output_f.write("%s\t%s\t%s\t%s\t%f\t%f\n" % (prediction_type, recalculate_similarity, disjoint_cv, "avg", numpy.mean(values), numpy.std(values)))
+	output_f.close()
     return
 
 
@@ -197,11 +209,10 @@ def get_scores_and_labels(pairs, classes, drug_to_disease_to_scores):
     return X, y
 
 
-def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name=None):
+def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity, knn = 20, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name=None):
     if file_name is not None and os.path.exists(file_name):
 	drug_to_disease_to_scores = cPickle.load(open(file_name))
     else:
-	knn = int(CONFIG.get("knn"))
 	drug_to_disease_to_scores = {}
 	if approach == "all_vs_all":
 	#if pairs_train is None and pairs_test is None:
@@ -284,8 +295,23 @@ def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_s
     return drug_to_disease_to_scores
 
 
-def check_ml(prediction_type, recalculate_similarity, disjoint_cv):
-    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
+def get_classification_model(model_type, model_fun = None):
+    if model_type == "svm":
+	clf = svm.SVC(kernel='linear', probability=True, C=1)
+    elif model_type == "logistic":
+	clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+    elif model_type == "custom":
+	if fun is None:
+	    raise ValueError("Custom model requires fun argument to be defined!")
+	clf = fun
+    else:
+	raise ValueError("Uknown model type: %s!" % model_type)
+    return clf
+
+
+def check_ml(data, knn, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f=None, model_fun=None):
+    #drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
+    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
     if prediction_type == "disease":
 	disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
     elif prediction_type == "side effect":
@@ -295,13 +321,22 @@ def check_ml(prediction_type, recalculate_similarity, disjoint_cv):
 	se_to_index = disease_to_index
     else:
 	raise ValueError("Uknown prediction_type: " + prediction_type)
-    drug_to_index, M_similarity_se = get_similarity(drugs, drug_to_values_se)
-    drug_to_index, M_similarity_chemical = get_similarity(drugs, drug_to_values_structure)
-    drug_to_index, M_similarity_target = get_similarity(drugs, drug_to_values_target)
+    list_M_similarity = []
+    #list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target]
+    if "phenotype" in features:
+	drug_to_index, M_similarity_se = get_similarity(drugs, drug_to_values_se)
+	list_M_similarity.append(M_similarity_se)
+    if "chemical" in features:
+	drug_to_index, M_similarity_chemical = get_similarity(drugs, drug_to_values_structure)
+	list_M_similarity.append(M_similarity_chemical)
+    if "target" in features:
+	drug_to_index, M_similarity_target = get_similarity(drugs, drug_to_values_target)
+	list_M_similarity.append(M_similarity_target)
     pairs, classes, cv = balance_data_and_get_cv(pairs, classes, disjoint = disjoint_cv) 
-    #drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name) # use all the info
+    #drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name) # use all the info
     #clf = svm.SVC(kernel='linear', probability=True, C=1)
-    clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+    #clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+    clf = get_classification_model(model_type, model_fun)
     all_auc = []
     for i, (train, test) in enumerate(cv):
 	#print test
@@ -315,23 +350,25 @@ def check_ml(prediction_type, recalculate_similarity, disjoint_cv):
 	#print list(pairs_train)[:5]
 	prev_time = time.time() 
 	if recalculate_similarity:
-	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_train, pairs_test = None, approach = "train_vs_train", file_name = file_name) 
+	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = pairs_train, pairs_test = None, approach = "train_vs_train", file_name = file_name) 
 	else:
 	    # Using similarity scores of all drugs, not only within the subset
-	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_train, pairs_test = pairs_test, approach = "train_test_vs_train_test", file_name = file_name) # similar to all_vs_all above, but removes the test pair
+	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = pairs_train, pairs_test = pairs_test, approach = "train_test_vs_train_test", file_name = file_name) # similar to all_vs_all above, but removes the test pair
 	print "t:", time.time() - prev_time 
 	#print drug_to_disease_to_scores["trovafloxacin"]
 	X, y = get_scores_and_labels(pairs_train, classes_train, drug_to_disease_to_scores)
 	#print pairs_train[classes_train==1]
 	if recalculate_similarity:
-	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = [M_similarity_se, M_similarity_chemical, M_similarity_target], pairs_train = pairs_test, pairs_test = None, approach = "train_vs_train", file_name = file_name) 
+	    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = pairs_test, pairs_test = None, approach = "train_vs_train", file_name = file_name) 
 	X_new, y_new = get_scores_and_labels(pairs_test, classes_test, drug_to_disease_to_scores)
 	#print X_new[y_new==1,:]
 	probas_ = clf.fit(X, y).predict_proba(X_new)
 	fpr, tpr, thresholds = roc_curve(y_new, probas_[:, 1]) 
 	roc_auc = auc(fpr, tpr)
 	all_auc.append(roc_auc)
-    print numpy.mean(all_auc), all_auc
+    print numpy.mean(all_auc), numpy.std(all_auc), all_auc
+    if output_f is not None:
+	output_f.write("%s\t%s\t%s\t%s\t%f\t%f\n" % (CONFIG.get("prediction_type"), CONFIG.get("recalculate_similarity"), CONFIG.get("disjoint_cv"), "cv", numpy.mean(all_auc), numpy.std(all_auc)))
     return numpy.mean(all_auc)
 
 
