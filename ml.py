@@ -3,10 +3,10 @@ import os, cPickle, numpy, random
 from toolbox import TsvReader, configuration
 # ML related
 from sklearn import preprocessing
-from sklearn import tree
-from sklearn import svm, linear_model
+from sklearn import tree, ensemble
+from sklearn import svm, linear_model, neighbors
 from sklearn import cross_validation
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, average_precision_score
 from scipy import interp
 import time
 
@@ -18,8 +18,6 @@ def main():
     n_seed = int(CONFIG.get("random_seed"))
     #random.seed(n_seed) # for reproducibility
     n_run = int(CONFIG.get("n_run"))
-    values = []
-    #!
     knn = int(CONFIG.get("knn"))
     model_type = CONFIG.get("model_type")
     #prediction_type = "side effect" #"disease"
@@ -27,18 +25,11 @@ def main():
     features = set(CONFIG.get("features").split("|"))
     recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") 
     disjoint_cv = CONFIG.get_boolean("disjoint_cv") 
-    data = get_zhang_data()
-    model_fun = None
-    output_f = open(CONFIG.get("output_file"), 'a')
-    if output_f is not None:
-	output_f.write("type\trecalculate\tdisjoint\tvariable\tmean\tsd\n")
-    for i in xrange(n_run): 
-	val = check_ml(data, knn, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun)
-	values.append(val)
-    print numpy.mean(values), numpy.std(values), values
-    if output_f is not None:
-	output_f.write("%s\t%s\t%s\t%s\t%f\t%f\n" % (prediction_type, recalculate_similarity, disjoint_cv, "avg", numpy.mean(values), numpy.std(values)))
-	output_f.close()
+    output_file = CONFIG.get("output_file")
+    n_fold = int(CONFIG.get("n_fold"))
+    n_proportion = int(CONFIG.get("n_proportion"))
+    n_subset = int(CONFIG.get("n_subset")) # for faster results - subsampling
+    check_ml(n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
     return
 
 
@@ -136,10 +127,7 @@ def get_drug_disease_mapping(drugs, drug_to_values, disease_to_index):
     return disease_to_drugs, pairs, classes
 
 
-def balance_data_and_get_cv(pairs, classes, disjoint=False):
-    n_fold = int(CONFIG.get("n_fold"))
-    n_proportion = int(CONFIG.get("n_proportion"))
-    n_subset = int(CONFIG.get("n_subset")) # for faster results - subsampling
+def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False):
     classes = numpy.array(classes)
     pairs = numpy.array(pairs)
     idx_true_list = [ list() for i in xrange(n_fold) ]
@@ -173,9 +161,10 @@ def balance_data_and_get_cv(pairs, classes, disjoint=False):
 			else:
 			    indices_train += idx_true_list[j][:n_subset] + idx_false_list[j][:(n_proportion * n_subset)]
 		yield indices_train, indices_test
+	i_random = random.randint(0,100) # for getting the shuffled drug names in the same fold below
 	for idx, (pair, class_) in enumerate(zip(pairs, classes)):
 	    drug, disease = pair
-	    i = sum([ord(c) for c in drug]) % n_fold
+	    i = sum([ord(c) + i_random for c in drug]) % n_fold
 	    if class_ == 0:
 		idx_false_list[i].append(idx)
 	    else:
@@ -244,7 +233,7 @@ def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_s
 	    disease_to_drugs_train = disease_to_drugs.copy()
 	    for drug, disease in pairs_test:
 		# Remove the test drug from the gold standard to unify the score calculation below
-		drugs_gold = disease_to_drugs_train[disease] - set([drug])
+		drugs_gold = disease_to_drugs_train[disease] - set([drug]) 
 		disease_to_drugs_train[disease] = drugs_gold
 	    for drug1, disease in pairs:
 		drugs_gold = disease_to_drugs_train[disease]
@@ -274,7 +263,7 @@ def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_s
 		for disease, drugs_gold in disease_to_drugs.iteritems():
 		    if (drug1, disease) not in pairs_train: 
 			continue
-		    drugs_gold &= drugs
+		    drugs_gold_mod = drugs_gold & drugs
 		    scores = []
 		    for M_similarity in list_M_similarity:
 			vals = []
@@ -282,7 +271,7 @@ def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_s
 			    if drug1 == drug2:
 				continue
 			    idx2 = drug_to_index[drug2]
-			    vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold)])
+			    vals.append([M_similarity[idx1][idx2], int(drug2 in drugs_gold_mod)])
 			vals.sort()
 			score = 0
 			for sim, val in vals[-knn:]:
@@ -300,6 +289,14 @@ def get_classification_model(model_type, model_fun = None):
 	clf = svm.SVC(kernel='linear', probability=True, C=1)
     elif model_type == "logistic":
 	clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+    elif model_type == "knn":
+	clf = neighbors.KNeighborsClassifier(n_neighbors=5) #weights='uniform', algorithm='auto', leaf_size=30, p=2, metric='minkowski', metric_params=None, n_jobs=1)
+    elif model_type == "tree":
+	clf = tree.DecisionTreeClassifier(criterion='gini') #splitter='best', max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features=None, random_state=None, max_leaf_nodes=None, class_weight=None, presort=False)
+    elif model_type == "rf":
+	clf = ensemble.RandomForestClassifier(n_estimators=10, criterion='gini') #, max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features='auto', max_leaf_nodes=None, bootstrap=True, oob_score=False, n_jobs=1, random_state=None, verbose=0, warm_start=False, class_weight=None)
+    elif model_type == "gbc":
+	clf = ensemble.GradientBoostingClassifier(n_estimators=100, loss='deviance', learning_rate=0.1, subsample=1.0) #, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=3, init=None, random_state=None, max_features=None, verbose=0, max_leaf_nodes=None, warm_start=False, presort='auto')
     elif model_type == "custom":
 	if fun is None:
 	    raise ValueError("Custom model requires fun argument to be defined!")
@@ -309,9 +306,10 @@ def get_classification_model(model_type, model_fun = None):
     return clf
 
 
-def check_ml(data, knn, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f=None, model_fun=None):
-    #drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
-    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
+def check_ml(n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file = None, model_fun = None):
+    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
+    #data = get_zhang_data()
+    #drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
     if prediction_type == "disease":
 	disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
     elif prediction_type == "side effect":
@@ -332,12 +330,31 @@ def check_ml(data, knn, model_type, prediction_type, features, recalculate_simil
     if "target" in features:
 	drug_to_index, M_similarity_target = get_similarity(drugs, drug_to_values_target)
 	list_M_similarity.append(M_similarity_target)
-    pairs, classes, cv = balance_data_and_get_cv(pairs, classes, disjoint = disjoint_cv) 
-    #drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name) # use all the info
+    if output_file is not None:
+	output_f = open(output_file, 'a')
+	output_f.write("n_fold\tn_proportion\tn_subset\tmodel type\tprediction type\tfeatures\trecalculate\tdisjoint\tvariable\tauc.mean\tauc.sd\tauprc.mean\tauprc.sd\n")
+    else:
+	output_f = None
+    values = []
+    values2 = []
+    for i in xrange(n_run): 
+	pairs_, classes_, cv = balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint = disjoint_cv)
+	val, val2 = check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs_, classes_, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun)
+	values.append(val)
+	values2.append(val2)
+    print numpy.mean(values), numpy.std(values), values
+    if output_f is not None:
+	output_f.write("%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%f\t%f\t%f\n" % (n_fold, n_proportion, n_subset, model_type, prediction_type, "|".join(features), recalculate_similarity, disjoint_cv, "avg", numpy.mean(values), numpy.std(values), numpy.mean(values2), numpy.std(values2)))
+	output_f.close()
+    return numpy.mean(values), numpy.mean(values2)
+
+
+def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs, classes, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun):
     #clf = svm.SVC(kernel='linear', probability=True, C=1)
     #clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
     clf = get_classification_model(model_type, model_fun)
     all_auc = []
+    all_auprc = []
     for i, (train, test) in enumerate(cv):
 	#print test
 	#file_name = base_dir + "drug_to_disease_to_scores.pcl.%d" % i 
@@ -366,10 +383,12 @@ def check_ml(data, knn, model_type, prediction_type, features, recalculate_simil
 	fpr, tpr, thresholds = roc_curve(y_new, probas_[:, 1]) 
 	roc_auc = auc(fpr, tpr)
 	all_auc.append(roc_auc)
+	prc_auc = average_precision_score(y_new, probas_[:, 1])
+	all_auprc.append(prc_auc)
     print numpy.mean(all_auc), numpy.std(all_auc), all_auc
     if output_f is not None:
-	output_f.write("%s\t%s\t%s\t%s\t%f\t%f\n" % (CONFIG.get("prediction_type"), CONFIG.get("recalculate_similarity"), CONFIG.get("disjoint_cv"), "cv", numpy.mean(all_auc), numpy.std(all_auc)))
-    return numpy.mean(all_auc)
+	output_f.write("%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%f\t%f\t%f\n" % (n_fold, n_proportion, n_subset, model_type, prediction_type, "|".join(features), recalculate_similarity, disjoint_cv, "cv", numpy.mean(all_auc), numpy.std(all_auc), numpy.mean(all_auprc), numpy.std(all_auprc)))
+    return numpy.mean(all_auc), numpy.mean(all_auprc)
 
 
 ### SOMEWHAT OBSOLETE ###
@@ -380,6 +399,7 @@ def check_ml_all():
     # Use all data
     file_name = base_dir + "drug_to_disease_to_scores.pcl"
     drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, [M_similarity], pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name)
+    #drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name) # use all the info
     # Create training data
     X_new, y_new = get_training_data(drug_to_disease_to_scores, disease_to_drugs)
     # Feature weights
