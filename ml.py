@@ -7,11 +7,10 @@ from sklearn import tree, ensemble
 from sklearn import svm, linear_model, neighbors
 from sklearn import cross_validation
 from sklearn.metrics import roc_curve, auc, average_precision_score
-from scipy import interp
+#from scipy import interp
 import time
 
 CONFIG = configuration.Configuration() 
-#base_dir = "/home/eguney/data/gottlieb/zhang/"
 
 def main():
     #check_ml_all()
@@ -41,7 +40,6 @@ def get_zhang_data():
     Add 'Drug' as the first column header
     """
     # Get disease data
-    #file_name = base_dir + "drug_disease.dat"
     file_name = CONFIG.get("drug_disease_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     disease_to_index, drug_to_values = parser.read(fields_to_include=None)
@@ -51,7 +49,6 @@ def get_zhang_data():
     #print disease_to_index["acromegaly"]
     #print drug_to_values["carnitine"]
     # Get SE data
-    #file_name = base_dir + "drug_sider.dat"
     file_name = CONFIG.get("drug_side_effect_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     se_to_index, drug_to_values_se = parser.read(fields_to_include=None)
@@ -61,7 +58,6 @@ def get_zhang_data():
     # Consider common drugs only
     print len(drugs)
     # Get structure data
-    #file_name = base_dir + "drug_structure.dat"
     file_name = CONFIG.get("drug_structure_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     structure_to_index, drug_to_values_structure = parser.read(fields_to_include=None)
@@ -69,7 +65,6 @@ def get_zhang_data():
     drugs &= set(drug_to_values_structure.keys())
     print len(drugs)
     # Get target data
-    #file_name = base_dir + "drug_protein.dat"
     file_name = CONFIG.get("drug_target_file")
     parser = TsvReader.TsvReader(file_name, delim="\t")
     target_to_index, drug_to_values_target = parser.read(fields_to_include=None)
@@ -128,6 +123,21 @@ def get_drug_disease_mapping(drugs, drug_to_values, disease_to_index):
 
 
 def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False):
+    """
+    pairs: all possible drug-disease pairs
+    classes: labels of these drug-disease associations (1: known, 0: unknown)
+    n_fold: number of cross-validation folds
+    n_proportion: proportion of negative instances compared to positives (e.g.,
+    2 means for each positive instance there are 2 negative instances)
+    n_subset: if not -1, it uses a random subset of size n_subset of the positive instances
+    (to reduce the computational time for large data sets)
+    disjoint: whether the cross-validation folds contain overlapping drugs (True) 
+    or not (False)
+    This function returns (pairs, classes, cv) after balancing the data and
+    creating the cross-validation folds. cv is the cross validation iterator containing 
+    train and test splits defined by the indices corresponding to elements in the 
+    pairs and classes lists.
+    """
     classes = numpy.array(classes)
     pairs = numpy.array(pairs)
     idx_true_list = [ list() for i in xrange(n_fold) ]
@@ -285,6 +295,15 @@ def get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_s
 
 
 def get_classification_model(model_type, model_fun = None):
+    """
+    model_type: custom | svm | logistic | knn | tree | rf | gbc
+    model_fun: the function implementing classifier when the model_type is custom
+    The allowed values for model_type are custom, svm, logistic, knn, tree, rf, gbc
+    corresponding to custom model provided in model_fun by the user or the default 
+    models in Scikit-learn for support vector machine, k-nearest-neighbor, 
+    decision tree, random forest and gradient boosting classifiers, respectively. 
+    Returns the classifier object that provides fit and predict_proba methods.
+    """
     if model_type == "svm":
 	clf = svm.SVC(kernel='linear', probability=True, C=1)
     elif model_type == "logistic":
@@ -357,7 +376,6 @@ def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, p
     all_auprc = []
     for i, (train, test) in enumerate(cv):
 	#print test
-	#file_name = base_dir + "drug_to_disease_to_scores.pcl.%d" % i 
 	file_name = None # for saving results
 	pairs_train = pairs[train]
 	classes_train = classes[train] 
@@ -393,6 +411,7 @@ def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, p
 
 ### SOMEWHAT OBSOLETE ###
 def check_ml_all():
+    base_dir = "../data/"
     drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
     disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
     drug_to_index, M_similarity = get_similarity(drugs, drug_to_values_se)
