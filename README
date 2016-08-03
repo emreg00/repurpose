@@ -66,3 +66,9 @@ Input parameters:
 Output:
     Returns the classifier object that provides fit and predict_proba methods.
 
+## Coming soon
+
+- A local copy of the data sets
+- Refactoring for isolating customizable functions and removing toolbox dependency
+- Jupyter notebook with example runs
+
