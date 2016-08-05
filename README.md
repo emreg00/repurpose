@@ -13,18 +13,31 @@ we present a Python-platform offering
 Using this platform we investigate the effect using unseen data in the test
 set in similarity-based classification.
 
-## Data sets
-The data sets used in the analysis are freely available 
-[online](http://astro.temple.edu/~tua87106/drugreposition.html)
+See Jupyter (IPython) [Notebook](repurpose.ipynb) for reproducing the analysis presented in the manuscript.
 
+
+## Requirements
 The Python platform has the following dependencies:
 
 - [Numpy](http://www.numpy.org)
 - [Scikit-learn](http://scikit-learn.org)
 - [Toolbox](https://github.com/emreg00/toolbox)
 
+
+## Data sets
+The data sets used in the analysis are freely available 
+[online](http://astro.temple.edu/~tua87106/drugreposition.html)
+
+We have modified these data sets slightly for parsing in Python by
+- converting all drug, disease and side effect terms to lowercase
+- removing the quotations and making the text tab delimited
+- we also added the 'Drug' text to the header 
+
+These modified files are available under ``data/'' folder.
+
 ## Usage
-> python ml.py
+In src/ directory, to run the code with the parameters defined in default.ini, type
+> python main.py
 
 ## Customizing the experimental settings
 The configuration information for the experiments are in default.ini. The 
@@ -66,9 +79,4 @@ Input parameters:
 Output:
     Returns the classifier object that provides fit and predict_proba methods.
 
-## Coming soon
-
-- A local copy of the data sets
-- Refactoring for isolating customizable functions and removing toolbox dependency
-- Jupyter notebook with example runs
 

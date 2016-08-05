@@ -1,7 +1,8 @@
 
 import random
 from toolbox import configuration
-from ml import get_data, check_ml
+from ml import check_ml
+from utilities import get_data
 
 CONFIG = configuration.Configuration() 
 
