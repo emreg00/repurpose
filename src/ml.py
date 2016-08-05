@@ -1,38 +1,15 @@
 
 import os, cPickle, numpy, random
-from toolbox import TsvReader, configuration
+from toolbox import TsvReader
 # ML related
-from sklearn import preprocessing
 from sklearn import tree, ensemble
 from sklearn import svm, linear_model, neighbors
 from sklearn import cross_validation
 from sklearn.metrics import roc_curve, auc, average_precision_score
-#from scipy import interp
 import time
 
-CONFIG = configuration.Configuration() 
 
-def main():
-    #check_ml_all()
-    n_seed = int(CONFIG.get("random_seed"))
-    #random.seed(n_seed) # for reproducibility
-    n_run = int(CONFIG.get("n_run"))
-    knn = int(CONFIG.get("knn"))
-    model_type = CONFIG.get("model_type")
-    #prediction_type = "side effect" #"disease"
-    prediction_type = CONFIG.get("prediction_type")
-    features = set(CONFIG.get("features").split("|"))
-    recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") 
-    disjoint_cv = CONFIG.get_boolean("disjoint_cv") 
-    output_file = CONFIG.get("output_file")
-    n_fold = int(CONFIG.get("n_fold"))
-    n_proportion = int(CONFIG.get("n_proportion"))
-    n_subset = int(CONFIG.get("n_subset")) # for faster results - subsampling
-    check_ml(n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
-    return
-
-
-def get_zhang_data():
+def get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file):
     """
     d=read.csv("drug_protein.csv", row.names=1)
     rownames(d) = tolower(rownames(d))
@@ -40,7 +17,7 @@ def get_zhang_data():
     Add 'Drug' as the first column header
     """
     # Get disease data
-    file_name = CONFIG.get("drug_disease_file")
+    file_name = drug_disease_file
     parser = TsvReader.TsvReader(file_name, delim="\t")
     disease_to_index, drug_to_values = parser.read(fields_to_include=None)
     drugs = set(drug_to_values.keys())
@@ -49,7 +26,7 @@ def get_zhang_data():
     #print disease_to_index["acromegaly"]
     #print drug_to_values["carnitine"]
     # Get SE data
-    file_name = CONFIG.get("drug_side_effect_file")
+    file_name = drug_side_effect_file
     parser = TsvReader.TsvReader(file_name, delim="\t")
     se_to_index, drug_to_values_se = parser.read(fields_to_include=None)
     drugs &= set(drug_to_values_se.keys())
@@ -58,14 +35,14 @@ def get_zhang_data():
     # Consider common drugs only
     print len(drugs)
     # Get structure data
-    file_name = CONFIG.get("drug_structure_file")
+    file_name = drug_structure_file
     parser = TsvReader.TsvReader(file_name, delim="\t")
     structure_to_index, drug_to_values_structure = parser.read(fields_to_include=None)
     print len(drug_to_values_structure), len(structure_to_index)
     drugs &= set(drug_to_values_structure.keys())
     print len(drugs)
     # Get target data
-    file_name = CONFIG.get("drug_target_file")
+    file_name = drug_target_file
     parser = TsvReader.TsvReader(file_name, delim="\t")
     target_to_index, drug_to_values_target = parser.read(fields_to_include=None)
     print len(drug_to_values_target), len(target_to_index)
@@ -325,10 +302,8 @@ def get_classification_model(model_type, model_fun = None):
     return clf
 
 
-def check_ml(n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file = None, model_fun = None):
-    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
-    #data = get_zhang_data()
-    #drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
+def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file = None, model_fun = None):
+    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
     if prediction_type == "disease":
 	disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
     elif prediction_type == "side effect":
@@ -409,83 +384,4 @@ def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, p
     return numpy.mean(all_auc), numpy.mean(all_auprc)
 
 
-### SOMEWHAT OBSOLETE ###
-def check_ml_all():
-    base_dir = "../data/"
-    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = get_zhang_data()
-    disease_to_drugs, pairs, classes = get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
-    drug_to_index, M_similarity = get_similarity(drugs, drug_to_values_se)
-    # Use all data
-    file_name = base_dir + "drug_to_disease_to_scores.pcl"
-    drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, [M_similarity], pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name)
-    #drug_to_disease_to_scores = get_similarity_based_scores(drugs, disease_to_drugs, drug_to_index, list_M_similarity = list_M_similarity, knn = knn, pairs_train = None, pairs_test = None, approach = "all_vs_all", file_name = file_name) # use all the info
-    # Create training data
-    X_new, y_new = get_training_data(drug_to_disease_to_scores, disease_to_drugs)
-    # Feature weights
-    # Tree 
-    clf = tree.DecisionTreeClassifier() #random_state=51234 #criterion='gini', max_depth=None, max_features=None, min_samples_leaf=1, min_samples_split=2)
-    #clf = clf.fit(X_new, y_new)
-    #print clf.feature_importances_
-    print cross_validation.cross_val_score(clf, X_new, y_new, cv=5, scoring="roc_auc")
-    #print values
-    # SVM - CV AUC
-    clf = svm.SVC(kernel='linear', probability=True, C=1)
-    scores = cross_validation.cross_val_score(clf, X_new, y_new, cv=5, scoring="roc_auc")
-    print scores
-    cv = cross_validation.StratifiedKFold(y_new, n_folds=5)
-    #mean_tpr = 0.0
-    #mean_fpr = numpy.linspace(0, 1, 100)
-    all_auc = []
-    for i, (train, test) in enumerate(cv):
-	# Compute ROC curve and area the curve
-	probas_ = clf.fit(X_new[train], y_new[train]).predict_proba(X_new[test])
-	fpr, tpr, thresholds = roc_curve(y_new[test], probas_[:, 1]) 
-	#fpr, tpr, thresholds = roc_curve(y_new[test], X_new[test] / X_new[test].max())
-	roc_auc = auc(fpr, tpr)
-	all_auc.append(roc_auc)
-	#mean_tpr += interp(mean_fpr, fpr, tpr)
-    print numpy.mean(all_auc), all_auc
-    #mean_tpr[0] = 0.0
-    #mean_tpr /= len(cv)
-    #mean_tpr[-1] = 1.0
-    #mean_auc = auc(mean_fpr, mean_tpr)
-    #print mean_auc
-    return
-
-def get_training_data(drug_to_disease_to_scores, disease_to_drugs):
-    values = []
-    classes = []
-    for drug, disease_to_scores in drug_to_disease_to_scores.iteritems():
-	for disease, scores in disease_to_score.iteritems():
-	    values.append(scores)
-	    flag = int(drug in disease_to_drugs[disease])
-	    classes.append(flag)
-    X = numpy.asmatrix(values).reshape((len(values),len(values[0])))
-    y = numpy.array(classes) 
-    print X.shape, y.shape
-    #print X[1:10], y[1:10]
-    X, y = preprocess(X, y)
-    print X.shape, y.shape
-    return X, y
-
-def preprocess(X, y, balance=True, scale=True):
-    X_true = X[y==1,:]
-    X_false = X[y==0,:]
-    # Balance True & False
-    if balance:
-	indices = range(X_false.shape[0])
-	random.shuffle(indices)
-	indices = indices[:X_true.shape[0]]
-	X_false = X[indices,:]
-	print X_true.shape, X_false.shape
-    X_new = numpy.concatenate((X_true, X_false), axis=0)
-    y_new = numpy.concatenate((numpy.ones(X_true.shape[0]), numpy.zeros(X_true.shape[0])), axis=0) 
-    # Scaling
-    if scale:
-	X_new = preprocessing.scale(X_new)
-    return X_new, y_new
-
-
-if __name__ == "__main__":
-    main()
 
