@@ -13,8 +13,8 @@ we present a Python-platform offering
 Using this platform we investigate the effect using unseen data in the test
 set in similarity-based classification.
 
-See Jupyter (IPython) [Notebook](repurpose.ipynb) for reproducing the analysis presented in the manuscript.
-
+See Jupyter (IPython) [Notebook](repurpose.ipynb) for reproducing the analysis 
+presented in the manuscript and example runs.
 
 ## Requirements
 The Python platform has the following dependencies:
@@ -22,7 +22,6 @@ The Python platform has the following dependencies:
 - [Numpy](http://www.numpy.org)
 - [Scikit-learn](http://scikit-learn.org)
 - [Toolbox](https://github.com/emreg00/toolbox)
-
 
 ## Data sets
 The data sets used in the analysis are freely available 
@@ -33,18 +32,52 @@ We have modified these data sets slightly for parsing in Python by
 - removing the quotations and making the text tab delimited
 - we also added the 'Drug' text to the header 
 
-These modified files are available under ``data/'' folder.
+These modified files are available under '_data/_' folder.
 
 ## Usage
-In src/ directory, to run the code with the parameters defined in default.ini, type
+
+For running the code with the parameters defined in '_default.ini_', in '_src/_' directory type
+
 > python main.py
+
+Alternatively, for using the check_ml method that builds a machine learning classifier to predict
+drug-disease associations using a cross-validation scheme, include the following in the python code
+
+> import ml
+> ml.check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
+
+data can be loaded using the following function
+
+> import utilities
+> data = utilities.get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
+
+See the [Notebook](repurpose.ipynb) for several use cases.
 
 ## Customizing the experimental settings
 The configuration information for the experiments are in default.ini. The 
 path of the data file has to be defined based on your local file structure.
 
+Parameters in '_default.ini_':
+
+- drug_disease_file: File containing drug-disease associations (a binary matrix where rows are drugs, columns are diseases) 
+- drug_side_effect_file = File containing drug-side effect associations (a binary matrix where rows are drugs, columns are side effects) 
+- drug_structure_file = File containing drug-chemical sub structure mapping (a binary matrix where rows are drugs, columns are substructures) 
+- drug_target_file: File containing drug-target mapping (a binary matrix where rows are drugs, columns are targets)
+- output_file: File in which the output AUC and AUPRC values are going to be stored
+- random_seed: A number to assign use as seed to random package functions (set it an integer for reproducibility, if -1 the output would vary depending on the random selection) 
+- model_type: Machine learning model to be  used to build the classifier, either svm | logistic | knn | tree | rf | gbc.
+- prediction_type = Whether the classifier will be build to predict drug-disease ('disease') or drug-side effect ('side effect') associations
+- features = Features to be used to build the classifier, a combination of chemical | target | phenotype 
+- disjoint: Whether the cross-validation folds contain overlapping drugs (True) or not (False)
+- recalculate_similarity = Whether to recalculate k-NN based drug-disease and drug-side effect association score within training and test sets (True: recalculate, default, False: do not recalculate)
+- knn = Number of most similar drugs to consider while calculating drug-disease and drug-side effect association score
+- n_fold: Number of cross-validation folds
+- n_proportion: Proportion of negative instances compared to positives (e.g., 2 means for each positive instance there are 2 negative instances)
+- n_subset: If not -1, it uses a random subset of size n_subset of the positive instances (to reduce the computational time for large data sets)
+- n_run = Number of repetitions of cross-validation analysis
+
 ## Customizing the methods
-- data balancing and cross validation
+- Data balancing and cross validation (in '_utilities.py_')
 
 > balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False)
 
@@ -64,6 +97,8 @@ Output:
     creating the cross-validation folds. cv is the cross validation iterator containing 
     train and test splits defined by the indices corresponding to elements in the 
     pairs and classes lists.
+
+- Classifier model (in '_utilities.py_')
 
 > get_classification_model(model_type, model_fun = None)
 
