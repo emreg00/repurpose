@@ -32,32 +32,38 @@ We have modified these data sets slightly for parsing in Python by
 - removing the quotations and making the text tab delimited
 - we also added the 'Drug' text to the header 
 
-These modified files are available under '_data/_' folder.
+These modified files are available under `data/` folder.
 
 ## Usage
 
-For running the code with the parameters defined in '_default.ini_', in '_src/_' directory type
+For running the code with the parameters defined in `default.ini`, in `src/` directory type
 
-> python main.py
+```python
+python main.py
+```
 
-Alternatively, for using the check_ml method that builds a machine learning classifier to predict
+Alternatively, for using the `check_ml` method that builds a machine learning classifier to predict
 drug-disease associations using a cross-validation scheme, include the following in the python code
 
-> import ml
-> ml.check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
+```python
+import ml
+ml.check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
+```
 
 data can be loaded using the following function
 
-> import utilities
-> data = utilities.get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
+```python
+import utilities
+data = utilities.get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
+```
 
 See the [Notebook](repurpose.ipynb) for several use cases.
 
 ## Customizing the experimental settings
-The configuration information for the experiments are in default.ini. The 
+The configuration information for the experiments are in `default.ini`. The 
 path of the data file has to be defined based on your local file structure.
 
-Parameters in '_default.ini_':
+Parameters in `default.ini`:
 
 - drug_disease_file: File containing drug-disease associations (a binary matrix where rows are drugs, columns are diseases) 
 - drug_side_effect_file = File containing drug-side effect associations (a binary matrix where rows are drugs, columns are side effects) 
@@ -65,7 +71,7 @@ Parameters in '_default.ini_':
 - drug_target_file: File containing drug-target mapping (a binary matrix where rows are drugs, columns are targets)
 - output_file: File in which the output AUC and AUPRC values are going to be stored
 - random_seed: A number to assign use as seed to random package functions (set it an integer for reproducibility, if -1 the output would vary depending on the random selection) 
-- model_type: Machine learning model to be  used to build the classifier, either svm | logistic | knn | tree | rf | gbc.
+- model_type: Machine learning model to be  used to build the classifier, either svm | logistic | knn | tree | rf | gbc
 - prediction_type = Whether the classifier will be build to predict drug-disease ('disease') or drug-side effect ('side effect') associations
 - features = Features to be used to build the classifier, a combination of chemical | target | phenotype 
 - disjoint: Whether the cross-validation folds contain overlapping drugs (True) or not (False)
@@ -77,9 +83,11 @@ Parameters in '_default.ini_':
 - n_run = Number of repetitions of cross-validation analysis
 
 ## Customizing the methods
-- Data balancing and cross validation (in '_utilities.py_')
+- Data balancing and cross validation (in `utilities.py`)
 
-> balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False)
+```python
+balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False)
+```
 
 Input parameters:
     pairs: all possible drug-disease pairs
@@ -98,9 +106,11 @@ Output:
     train and test splits defined by the indices corresponding to elements in the 
     pairs and classes lists.
 
-- Classifier model (in '_utilities.py_')
+- Classifier model (in `utilities.py`)
 
-> get_classification_model(model_type, model_fun = None)
+```python
+get_classification_model(model_type, model_fun = None)
+```
 
 Input parameters:
     model_type: custom | svm | logistic | knn | tree | rf | gbc
