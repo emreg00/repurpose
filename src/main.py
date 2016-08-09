@@ -1,6 +1,6 @@
 
 import random
-from toolbox import configuration
+import configuration
 from ml import check_ml
 from utilities import get_data
 

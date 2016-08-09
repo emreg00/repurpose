@@ -21,7 +21,6 @@ The Python platform has the following dependencies:
 
 - [Numpy](http://www.numpy.org)
 - [Scikit-learn](http://scikit-learn.org)
-- [Toolbox](https://github.com/emreg00/toolbox)
 
 ## Data sets
 The data sets used in the analysis are freely available 

@@ -2,7 +2,7 @@ import numpy, random, os, cPickle
 from sklearn import tree, ensemble
 from sklearn import svm, linear_model, neighbors
 from sklearn import cross_validation
-from toolbox import TsvReader
+import TsvReader
 
 
 def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False):
