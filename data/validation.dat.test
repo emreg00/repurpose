@@ -180,3 +180,63 @@ n_fold	n_proportion	n_subset	model type	prediction type	features	recalculate	dis
 2	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.427235	0.438914	85.572585	0.206541
 2	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.559980	0.365248	85.499717	0.311375
 2	2	-1	logistic	disease	chemical|target|phenotype	True	False	avg	85.460386	0.124631	85.418841	0.230571
+n_fold	n_proportion	n_subset	model type	prediction type	features	recalculate	disjoint	variable	auc.mean	auc.sd	auprc.mean	auprc.sd
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.323688	1.341984	84.982507	1.582388
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.175297	1.384695	84.700183	1.498839
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.215075	1.183919	84.827654	1.059902
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.549851	0.772150	85.467477	0.914153
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.227293	0.702328	84.672448	0.771021
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.171612	0.905668	85.098368	0.837002
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.512685	0.923743	85.480485	0.959106
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.327087	1.017823	85.318654	0.765874
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.241740	0.635488	85.169189	0.772263
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	85.035603	1.071257	84.747485	1.522264
+5	2	-1	logistic	disease	chemical|target|phenotype	True	False	avg	85.277993	0.148978	85.046445	0.293023
+n_fold	n_proportion	n_subset	model type	prediction type	features	recalculate	disjoint	variable	auc.mean	auc.sd	auprc.mean	auprc.sd
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.216845	2.020814	83.695916	2.157606
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.788465	1.632515	83.125112	1.396375
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.439986	1.436952	84.366506	1.158509
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.390029	1.565563	82.405804	1.689703
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.333156	1.604642	83.987776	1.596518
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.359487	1.345762	83.351689	1.616040
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.846966	1.124478	83.233731	0.875457
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.631361	1.768768	84.486820	1.539230
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.315066	1.779673	83.715306	1.754555
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.102098	1.275975	83.576941	1.304080
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	avg	84.142346	0.350250	83.594560	0.582625
+n_fold	n_proportion	n_subset	model type	prediction type	features	recalculate	disjoint	variable	auc.mean	auc.sd	auprc.mean	auprc.sd
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.767405	2.703647	80.732315	2.654882
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.677837	2.315416	81.104379	2.668723
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.464880	2.478976	81.034269	2.693584
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.406301	3.217194	80.753041	3.946641
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.131349	2.823196	80.022531	2.992643
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.737404	2.342135	81.057036	2.134645
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.227452	1.674732	80.218940	2.110153
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.391298	2.466380	80.722444	2.665113
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.731273	3.241277	81.169532	3.264430
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	81.525892	1.816740	80.367214	2.094933
+20	2	-1	logistic	disease	chemical|target|phenotype	True	False	avg	81.506109	0.211019	80.718170	0.377542
+n_fold	n_proportion	n_subset	model type	prediction type	features	recalculate	disjoint	variable	auc.mean	auc.sd	auprc.mean	auprc.sd
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.176444	1.468618	83.571048	1.600894
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.635960	1.262124	82.883166	1.751465
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.947358	2.007287	83.425599	1.998558
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.107395	1.873891	83.965396	2.112660
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.687629	1.066634	83.377928	1.488327
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.713628	2.128668	84.173365	2.315291
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.076636	1.599760	83.174478	1.344877
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	83.702918	1.500233	82.968116	1.497922
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.158183	1.911970	83.825480	2.050980
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	cv	84.459798	1.831924	83.961112	2.205465
+10	2	-1	logistic	disease	chemical|target|phenotype	True	False	avg	84.066595	0.327265	83.532569	0.421047
+n_fold	n_proportion	n_subset	model type	prediction type	features	recalculate	disjoint	variable	auc.mean	auc.sd	auprc.mean	auprc.sd
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	64.248455	7.875101	61.182886	9.680770
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	63.727749	8.530544	62.776783	10.683478
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	65.167213	7.088188	62.416394	9.024751
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	63.227604	9.317376	61.152660	11.994249
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	64.248455	7.875101	61.182886	9.680770
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	66.143472	6.678136	62.867484	9.470632
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	64.248455	7.875101	61.182886	9.680770
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	63.227604	9.317376	61.152660	11.994249
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	63.227604	9.317376	61.152660	11.994249
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	cv	65.708798	5.955332	63.278194	8.851113
+10	2	-1	logistic	disease	chemical|target|phenotype	True	True	avg	64.317541	0.995873	61.834549	0.839424
