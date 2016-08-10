@@ -35,7 +35,7 @@ These modified files are available under `data/` folder.
 
 ## Usage
 
-For running the code with the default parameters defined in the `default.ini`, in `src/` directory type
+For running the code with the default parameters defined in the `default.ini` in `src/` directory, type
 
 ```python
 config_file = "default.ini"
