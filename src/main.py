@@ -1,12 +1,20 @@
 
-import random
+import random, argparse
 import configuration
 from ml import check_ml
 from utilities import get_data
 
-CONFIG = configuration.Configuration() 
-
 def main():
+    """
+    Usage: python main.py [ -c config_file -s config_section ]
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config_file', default="default.ini") 
+    parser.add_argument('-s', '--config_section', default="DEFAULT") 
+    args = parser.parse_args()
+    config_file = args.config_file #"default.ini"
+    config_section = args.config_section #"DEFAULT" # "DISJOINT" "TEST"
+    CONFIG = configuration.Configuration(config_file, config_section) 
     n_seed = int(CONFIG.get("random_seed"))
     if n_seed != -1:
 	random.seed(n_seed) # for reproducibility

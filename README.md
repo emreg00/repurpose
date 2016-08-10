@@ -35,10 +35,12 @@ These modified files are available under `data/` folder.
 
 ## Usage
 
-For running the code with the parameters defined in `default.ini`, in `src/` directory type
+For running the code with the default parameters defined in the `default.ini`, in `src/` directory type
 
 ```python
-python main.py
+config_file = "default.ini"
+config_section = "DEFAULT"
+python main.py -c config_file -s config_section 
 ```
 
 Alternatively, for using the `check_ml` method that builds a machine learning classifier to predict
