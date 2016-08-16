@@ -1,4 +1,4 @@
-import unittest, numpy
+import unittest
 from utilities import balance_data_and_get_cv, get_similarity, get_similarity_based_scores
 
 class TestUtilityMethods(unittest.TestCase):
