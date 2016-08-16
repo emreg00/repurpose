@@ -5,7 +5,7 @@ from sklearn import cross_validation
 import TsvReader
 
 
-def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False):
+def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, disjoint=False):
     """
     pairs: all possible drug-disease pairs
     classes: labels of these drug-disease associations (1: known, 0: unknown)
