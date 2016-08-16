@@ -16,11 +16,31 @@ set in similarity-based classification.
 See Jupyter (IPython) [Notebook](repurpose.ipynb) for reproducing the analysis 
 presented in the manuscript and example runs.
 
+
 ## Requirements
 The Python platform has the following dependencies:
 
 - [Numpy](http://www.numpy.org)
 - [Scikit-learn](http://scikit-learn.org)
+
+
+## Installing & running tests
+
+Just download (i.e. clone) the files to your computer, no additional install is required.
+Several test cases for the methods in `utilities.py` are provided in `tests.py`. 
+To run these, type
+
+```python
+python tests.py
+```
+
+It should give an output similar to below
+>......
+>----------------------------------------------------------------------
+>Ran 6 tests in 0.002s
+>
+>OK
+
 
 ## Data sets
 The data sets used in the analysis are freely available 
@@ -32,6 +52,7 @@ We have modified these data sets slightly for parsing in Python by
 - we also added the 'Drug' text to the header 
 
 These modified files are available under `data/` folder.
+
 
 ## Usage
 
@@ -60,6 +81,7 @@ data = utilities.get_data(drug_disease_file, drug_side_effect_file, drug_structu
 
 See the [Notebook](repurpose.ipynb) for several use cases.
 
+
 ## Customizing the experimental settings
 The configuration information for the experiments are in `default.ini`. The 
 path of the data file has to be defined based on your local file structure.
@@ -82,6 +104,7 @@ Parameters in `default.ini`:
 - n_proportion: Proportion of negative instances compared to positives (e.g., 2 means for each positive instance there are 2 negative instances)
 - n_subset: If not -1, it uses a random subset of size n_subset of the positive instances (to reduce the computational time for large data sets)
 - n_run = Number of repetitions of cross-validation analysis
+
 
 ## Customizing the methods
 - Data balancing and cross validation (in `utilities.py`)
