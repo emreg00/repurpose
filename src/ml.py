@@ -1,10 +1,10 @@
 
-import numpy
+import numpy, random
 from sklearn.metrics import roc_curve, auc, average_precision_score
 import utilities
 
 
-def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file = None, model_fun = None, verbose=False):
+def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file = None, model_fun = None, verbose=False, n_seed = None):
     drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
     if prediction_type == "disease":
 	disease_to_drugs, pairs, classes = utilities.get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
@@ -33,8 +33,12 @@ def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, predi
     values = []
     values2 = []
     for i in xrange(n_run): 
-	pairs_, classes_, cv = utilities.balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint = disjoint_cv)
-	val, val2 = check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs_, classes_, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun, verbose)
+	if n_seed is not None:
+	    n_seed += i
+	    random.seed(n_seed)
+	    numpy.random.seed(n_seed)
+	pairs_, classes_, cv = utilities.balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint = disjoint_cv, n_seed = n_seed)
+	val, val2 = check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs_, classes_, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun, verbose, n_seed)
 	values.append(val)
 	values2.append(val2)
     print "AUC over runs: %.1f (+/-%.1f):" % (numpy.mean(values), numpy.std(values)), map(lambda x: round(x, ndigits=1), values)
@@ -44,8 +48,8 @@ def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, predi
     return "AUC: %.1f" % numpy.mean(values), "AUPRC: %.1f" % numpy.mean(values2)
 
 
-def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs, classes, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun, verbose):
-    clf = utilities.get_classification_model(model_type, model_fun)
+def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs, classes, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun, verbose, n_seed):
+    clf = utilities.get_classification_model(model_type, model_fun, n_seed)
     all_auc = []
     all_auprc = []
     for i, (train, test) in enumerate(cv):

@@ -5,7 +5,7 @@ from sklearn import cross_validation
 import TsvReader
 
 
-def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, disjoint=False):
+def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, disjoint=False, n_seed = None):
     """
     pairs: all possible drug-disease pairs
     classes: labels of these drug-disease associations (1: known, 0: unknown)
@@ -75,11 +75,11 @@ def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, d
 	#print "+/-:", len(indices_true), len(indices), len(indices_false)
 	pairs = numpy.concatenate((pairs[indices_true], pairs[indices]), axis=0)
 	classes = numpy.concatenate((classes[indices_true], classes[indices]), axis=0) 
-	cv = cross_validation.StratifiedKFold(classes, n_folds=n_fold, shuffle=True)
+	cv = cross_validation.StratifiedKFold(classes, n_folds=n_fold, shuffle=True, random_state=n_seed)
     return pairs, classes, cv
 
 
-def get_classification_model(model_type, model_fun = None):
+def get_classification_model(model_type, model_fun = None, n_seed = None):
     """
     model_type: custom | svm | logistic | knn | tree | rf | gbc
     model_fun: the function implementing classifier when the model_type is custom
@@ -92,15 +92,15 @@ def get_classification_model(model_type, model_fun = None):
     if model_type == "svm":
 	clf = svm.SVC(kernel='linear', probability=True, C=1)
     elif model_type == "logistic":
-	clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0) #, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+	clf = linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, random_state=n_seed) #, fit_intercept=True, intercept_scaling=1, class_weight=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
     elif model_type == "knn":
 	clf = neighbors.KNeighborsClassifier(n_neighbors=5) #weights='uniform', algorithm='auto', leaf_size=30, p=2, metric='minkowski', metric_params=None, n_jobs=1)
     elif model_type == "tree":
-	clf = tree.DecisionTreeClassifier(criterion='gini') #splitter='best', max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features=None, random_state=None, max_leaf_nodes=None, class_weight=None, presort=False)
+	clf = tree.DecisionTreeClassifier(criterion='gini', random_state=n_seed) #splitter='best', max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features=None, max_leaf_nodes=None, class_weight=None, presort=False)
     elif model_type == "rf":
-	clf = ensemble.RandomForestClassifier(n_estimators=10, criterion='gini') #, max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features='auto', max_leaf_nodes=None, bootstrap=True, oob_score=False, n_jobs=1, random_state=None, verbose=0, warm_start=False, class_weight=None)
+	clf = ensemble.RandomForestClassifier(n_estimators=10, criterion='gini', random_state=n_seed) #, max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features='auto', max_leaf_nodes=None, bootstrap=True, oob_score=False, n_jobs=1, verbose=0, warm_start=False, class_weight=None)
     elif model_type == "gbc":
-	clf = ensemble.GradientBoostingClassifier(n_estimators=100, loss='deviance', learning_rate=0.1, subsample=1.0) #, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=3, init=None, random_state=None, max_features=None, verbose=0, max_leaf_nodes=None, warm_start=False, presort='auto')
+	clf = ensemble.GradientBoostingClassifier(n_estimators=100, loss='deviance', learning_rate=0.1, subsample=1.0, random_state=n_seed) #, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=3, init=None, max_features=None, verbose=0, max_leaf_nodes=None, warm_start=False, presort='auto')
     elif model_type == "custom":
 	if fun is None:
 	    raise ValueError("Custom model requires fun argument to be defined!")

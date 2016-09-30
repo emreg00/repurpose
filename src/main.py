@@ -18,6 +18,8 @@ def main():
     n_seed = int(CONFIG.get("random_seed"))
     if n_seed != -1:
 	random.seed(n_seed) # for reproducibility
+    else:
+	n_seed = None
     n_run = int(CONFIG.get("n_run"))
     knn = int(CONFIG.get("knn"))
     model_type = CONFIG.get("model_type")
@@ -36,7 +38,7 @@ def main():
     # Get data
     data = get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
     # Check prediction accuracy of ML classifier on the data set using the parameters above
-    check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
+    check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None, n_seed = n_seed)
     return
 
 
