@@ -149,3 +149,8 @@ Output:
     Returns the classifier object that provides fit and predict_proba methods.
 
 
+## Citation
+
+Guney E., REPRODUCIBLE DRUG REPURPOSING: WHEN SIMILARITY DOES NOT SUFFICE.
+Pac Symp Biocomput. 2016;22:132-143. [Pubmed](https://www.ncbi.nlm.nih.gov/pubmed/27896969)
+
