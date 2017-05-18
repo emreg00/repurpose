@@ -5,14 +5,20 @@ import utilities
 
 
 def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file = None, model_fun = None, verbose=False, n_seed = None):
-    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target = data
+    drugs, disease_to_index, drug_to_values, se_to_index, drug_to_values_se, drug_to_values_structure, drug_to_values_target, drug_interaction_to_index, drug_to_values_interaction = data
     if prediction_type == "disease":
+	# For drug repurposing (feature phenotype: side effect)
 	disease_to_drugs, pairs, classes = utilities.get_drug_disease_mapping(drugs, drug_to_values, disease_to_index)
     elif prediction_type == "side effect":
-	# For side effect prediction
+	# For side effect prediction (feature phenotype: disease indication)
 	disease_to_drugs, pairs, classes = utilities.get_drug_disease_mapping(drugs, drug_to_values_se, se_to_index)
 	drug_to_values_se = drug_to_values
 	se_to_index = disease_to_index
+    elif prediction_type == "drug interaction":
+	if drug_interaction_to_index is None:
+	    raise ValueError("Drug interaction information is missing!")
+	# For drug interaction prediction (feature phenotype: side effect)
+	disease_to_drugs, pairs, classes = utilities.get_drug_disease_mapping(drugs, drug_to_values_interaction, drug_interaction_to_index)
     else:
 	raise ValueError("Uknown prediction_type: " + prediction_type)
     list_M_similarity = []
@@ -49,6 +55,7 @@ def check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, predi
 
 
 def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, pairs, classes, cv, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_f, model_fun, verbose, n_seed):
+    # Get classification model
     clf = utilities.get_classification_model(model_type, model_fun, n_seed)
     all_auc = []
     all_auprc = []
@@ -82,13 +89,15 @@ def check_ml_helper(drugs, disease_to_drugs, drug_to_index, list_M_similarity, p
     return numpy.mean(all_auc), numpy.mean(all_auprc)
 
 
-def get_scores_and_labels(pairs, classes, drug_to_disease_to_scores):
+def get_scores_and_labels(pairs, classes, drug_to_disease_to_scores, rescale_scores = False):
     values = []
     for drug, disease in pairs:
 	scores = drug_to_disease_to_scores[drug][disease]
 	values.append(scores)
     X = numpy.asmatrix(values).reshape((len(values),len(values[0])))
     y = numpy.array(classes) 
+    if rescale_scores:
+	X = utilities.rescale_data(X)
     return X, y
 
 

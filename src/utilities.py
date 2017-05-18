@@ -2,6 +2,7 @@ import numpy, random, os, cPickle
 from sklearn import tree, ensemble
 from sklearn import svm, linear_model, neighbors
 from sklearn import cross_validation
+from sklearn import preprocessing
 import TsvReader
 
 
@@ -110,16 +111,28 @@ def get_classification_model(model_type, model_fun = None, n_seed = None):
     return clf
 
 
-def get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file):
+def rescale_data(X):
+    X_new = preprocessing.scale(data, axis = 0, with_mean = True, with_std = True, copy = True)
+    return X_new
+
+
+def get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file, drug_interaction_file=None):
     """
     drug_disease_file: drug-disease matrix, rows drugs, columns diseases, 
 		       binary values (0/1) for the drug-disease association
     drug_side_effect_file: drug-side effect matrix, in the same format above
     drug_structure_file: drug-chemical substructure matrix, in the same format above
     drug_target_file: drug-target matrix, in the same format above
-    Reads drug disease, side effect, chemical structure and target info into dictionaries 
+    Reads drug disease, side effect, chemical structure, target info, drug interaction info (if available) into dictionaries 
     """
     data = get_zhang_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
+    drug_interaction_to_index, drug_to_values_interaction = None, None
+    if drug_interaction_file is not None:
+	# Get drug interaction data
+	file_name = drug_interaction_file
+	parser = TsvReader.TsvReader(file_name, delim="\t")
+	drug_interaction_to_index, drug_to_values_interaction = parser.read(fields_to_include=None)
+    data += tuple((drug_interaction_to_index, drug_to_values_interaction))
     return data
 
 

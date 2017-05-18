@@ -1,5 +1,5 @@
 
-# Repurpose: A Python-based platform for reproducible similarity-based drug repurposing 
+# Repurpose: A Python-based platform for reproducible similarity-based drug repurposing
 
 Over the past years many methods for similarity-based (a.k.a. knowledge-based, 
 guilt-by-association-based) drug repurposing, yet most of these studies do not 
@@ -16,6 +16,8 @@ set in similarity-based classification.
 See Jupyter (IPython) [Notebook](repurpose.ipynb) for reproducing the analysis 
 presented in the manuscript and example runs.
 
+See [DDI Notebook](interaction.ipynb) for the analysis of drug-drug interaction
+prediction using drug similarity.
 
 ## Requirements
 The Python platform has the following dependencies:
@@ -53,6 +55,9 @@ We have modified these data sets slightly for parsing in Python by
 
 These modified files are available under `data/` folder.
 
+We have also retrieve pharmocokinetic drug-drug interaction (DDI) information
+from [DrugBank](http://drugbank.ca/) database (v4.5.0) and mapped the drugs 
+on the data set above.
 
 ## Usage
 
