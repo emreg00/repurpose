@@ -6,7 +6,7 @@ from sklearn import preprocessing
 import TsvReader
 
 
-def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, disjoint=False, n_seed = None):
+def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, disjoint=False, split_both=False, n_seed = None):
     """
     pairs: all possible drug-disease pairs
     classes: labels of these drug-disease associations (1: known, 0: unknown)
@@ -21,6 +21,9 @@ def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, d
     creating the cross-validation folds. cv is the cross validation iterator containing 
     train and test splits defined by the indices corresponding to elements in the 
     pairs and classes lists.
+    >>> pairs = map(lambda x: map(str, x), [(1,5), (2,6), (4,8), (3,7), (1, 8), (2, 7), (5, 8), (3, 6)])
+    >>> classes = [1, 1, 0, 0, 0, 0, 0, 0]
+    >>> p, c, cv = utilities.balance_data_and_get_cv(pairs, classes, 2, 2, disjoint=True, split_both=True)
     """
     classes = numpy.array(classes)
     pairs = numpy.array(pairs)
@@ -56,13 +59,73 @@ def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, d
 			    indices_train += idx_true_list[j][:n_subset] + idx_false_list[j][:(n_proportion * n_subset)]
 		yield indices_train, indices_test
 	i_random = random.randint(0,100) # for getting the shuffled drug names in the same fold below
-	for idx, (pair, class_) in enumerate(zip(pairs, classes)):
-	    drug, disease = pair
-	    i = sum([ord(c) + i_random for c in drug]) % n_fold
-	    if class_ == 0:
-		idx_false_list[i].append(idx)
-	    else:
-		idx_true_list[i].append(idx)
+	if split_both:
+	    id_to_fold = {}
+	    drugs = reduce(lambda x,y: set(x+y), zip(*pairs))
+	    fold_sizes = numpy.array([ 0 ] * n_fold)
+	    for drug in drugs:
+		i = int(random.choice(numpy.argwhere(fold_sizes == numpy.min(fold_sizes))))
+		id_to_fold[drug] = i
+		fold_sizes[i] += 1
+		#print drug, id_to_fold
+	    for idx, (pair, class_) in enumerate(zip(pairs, classes)):
+		drug, disease = pair
+		i = id_to_fold[drug]
+		if i != id_to_fold[disease]:
+		    continue
+		if class_ == 0:
+		    idx_false_list[i].append(idx)
+		else:
+		    idx_true_list[i].append(idx)
+	    #print idx_false_list, idx_true_list
+	    if any(numpy.array(map(len, idx_true_list))==0) or any(numpy.array(map(len, idx_false_list))==0):
+		print map(len, idx_true_list), map(len, idx_false_list)
+	    	raise ValueError("No partitioning found!")
+	elif False: #! split_both:
+	    id_to_fold = {}
+	    fold_sizes = numpy.array([ 0 ] * n_fold)
+	    pairs2 = pairs[numpy.argsort(pairs, axis=0)][:,0]
+	    classes2 = classes[numpy.argsort(pairs, axis=0)][:,0]
+	    for idx, (pair, class_) in enumerate(zip(pairs2, classes2)):
+		drug, disease = pair
+		if drug in id_to_fold and disease not in id_to_fold:
+		    i = id_to_fold[drug]
+		    id_to_fold[disease] = i
+		    fold_sizes[i] += 1
+		elif drug not in id_to_fold and disease in id_to_fold:
+		    i = id_to_fold[disease]
+		    id_to_fold[drug] = i
+		    fold_sizes[i] += 1
+		elif drug not in id_to_fold and disease not in id_to_fold:
+		    #i = sum([ord(c) + i_random for c in drug]) % n_fold
+		    #i = numpy.argmin(fold_sizes)
+		    i = int(random.choice(numpy.argwhere(fold_sizes == numpy.min(fold_sizes))))
+		    id_to_fold[drug] = i
+		    id_to_fold[disease] = i
+		    fold_sizes[i] += 2
+		else:
+		    assert id_to_fold[drug] == id_to_fold[disease]
+		    i = id_to_fold[drug]
+		#print drug, disease, id_to_fold
+	    for idx, (pair, class_) in enumerate(zip(pairs, classes)):
+		drug, disease = pair
+		i = id_to_fold[drug]
+		if class_ == 0:
+		    idx_false_list[i].append(idx)
+		else:
+		    idx_true_list[i].append(idx)
+	    #print idx_false_list, idx_true_list
+	    if any(numpy.array(map(len, idx_true_list))==0) or any(numpy.array(map(len, idx_false_list))==0):
+		print map(len, idx_true_list), map(len, idx_false_list)
+	    	raise ValueError("No partitioning found!")
+	else:
+	    for idx, (pair, class_) in enumerate(zip(pairs, classes)):
+		drug, disease = pair
+		i = sum([ord(c) + i_random for c in drug]) % n_fold
+		if class_ == 0:
+		    idx_false_list[i].append(idx)
+		else:
+		    idx_true_list[i].append(idx)
 	#print "+/-:", map(len, idx_true_list), map(len, idx_false_list)
 	cv = get_groups(idx_true_list, idx_false_list, n_subset, n_proportion, shuffle=True)
     else:

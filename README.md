@@ -13,7 +13,7 @@ we present a Python-platform offering
 Using this platform we investigate the effect using unseen data in the test
 set in similarity-based classification.
 
-See Jupyter (IPython) [Notebook](repurpose.ipynb) for reproducing the analysis 
+See Jupyter (IPython) [Repurpose Notebook](repurpose.ipynb) for reproducing the analysis 
 presented in the manuscript and example runs.
 
 See [DDI Notebook](interaction.ipynb) for the analysis of drug-drug interaction
@@ -74,17 +74,17 @@ drug-disease associations using a cross-validation scheme, include the following
 
 ```python
 import ml
-ml.check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None)
+ml.check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, split_both = False, output_file = None, model_fun = None, verbose = False, n_seed = None)
 ```
 
 data can be loaded using the following function
 
 ```python
 import utilities
-data = utilities.get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
+data = utilities.get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file, drug_interaction_file=None)
 ```
 
-See the [Notebook](repurpose.ipynb) for several use cases.
+See the [Repurpose Notebook](repurpose.ipynb) for several use cases on repurposing drugs using chemical, target profile and side effect similarity. For drug-drug interaction prediction using drug similarity, see the [DDI Notebook](interaction.ipynb).
 
 
 ## Customizing the experimental settings
@@ -103,6 +103,7 @@ Parameters in `default.ini`:
 - prediction_type = Whether the classifier will be build to predict drug-disease ('disease') or drug-side effect ('side effect') associations
 - features = Features to be used to build the classifier, a combination of chemical | target | phenotype 
 - disjoint: Whether the cross-validation folds contain overlapping drugs (True) or not (False)
+- pairwise_disjoint : Whether the cross-validation folds should group both of the pairs within the same group
 - recalculate_similarity = Whether to recalculate k-NN based drug-disease and drug-side effect association score within training and test sets (True: recalculate, default, False: do not recalculate)
 - knn = Number of most similar drugs to consider while calculating drug-disease and drug-side effect association score
 - n_fold: Number of cross-validation folds
@@ -115,7 +116,7 @@ Parameters in `default.ini`:
 - Data balancing and cross validation (in `utilities.py`)
 
 ```python
-balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset, disjoint=False)
+balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, disjoint=False, split_both=False, n_seed=None)
 ```
 
 Input parameters:
@@ -126,8 +127,9 @@ Input parameters:
     2 means for each positive instance there are 2 negative instances)
     n_subset: if not -1, it uses a random subset of size n_subset of the positive instances
     (to reduce the computational time for large data sets)
-    disjoint: whether the cross-validation folds contain overlapping drugs (True) 
-    or not (False)
+    disjoint: whether the cross-validation folds contain overlapping drugs (True) or not (False)
+    split_both: whether the cross-validation folds should group both of the pairs within the same group
+    n_seed: number to feed to the random generator to for reproducibility (of the cross-validation folds)
 
 Output:
     This function returns (pairs, classes, cv) after balancing the data and

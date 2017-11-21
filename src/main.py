@@ -27,6 +27,10 @@ def main():
     features = set(CONFIG.get("features").split("|"))
     recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") 
     disjoint_cv = CONFIG.get_boolean("disjoint_cv") 
+    try:
+	split_both = CONFIG.get_boolean("pairwise_disjoint") 
+    except:
+	split_both = False
     output_file = CONFIG.get("output_file")
     n_fold = int(CONFIG.get("n_fold"))
     n_proportion = int(CONFIG.get("n_proportion"))
@@ -38,7 +42,7 @@ def main():
     # Get data
     data = get_data(drug_disease_file, drug_side_effect_file, drug_structure_file, drug_target_file)
     # Check prediction accuracy of ML classifier on the data set using the parameters above
-    check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, output_file, model_fun = None, n_seed = n_seed)
+    check_ml(data, n_run, knn, n_fold, n_proportion, n_subset, model_type, prediction_type, features, recalculate_similarity, disjoint_cv, split_both, output_file, model_fun = None, n_seed = n_seed)
     return
 
 
