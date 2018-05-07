@@ -80,7 +80,7 @@ def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, d
             #print idx_false_list, idx_true_list
             if any(numpy.array(map(len, idx_true_list))==0) or any(numpy.array(map(len, idx_false_list))==0):
                 print map(len, idx_true_list), map(len, idx_false_list)
-                    raise ValueError("No partitioning found!")
+                raise ValueError("No partitioning found!")
         elif False: #! split_both:
             id_to_fold = {}
             fold_sizes = numpy.array([ 0 ] * n_fold)
@@ -117,7 +117,7 @@ def balance_data_and_get_cv(pairs, classes, n_fold, n_proportion, n_subset=-1, d
             #print idx_false_list, idx_true_list
             if any(numpy.array(map(len, idx_true_list))==0) or any(numpy.array(map(len, idx_false_list))==0):
                 print map(len, idx_true_list), map(len, idx_false_list)
-                    raise ValueError("No partitioning found!")
+                raise ValueError("No partitioning found!")
         else:
             for idx, (pair, class_) in enumerate(zip(pairs, classes)):
                 drug, disease = pair

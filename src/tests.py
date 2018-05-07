@@ -88,13 +88,13 @@ class TestUtilityMethods(unittest.TestCase):
         drug1 = "c1"
         # c1-c2 similarity cor([1,0,0], [1,1,0]) == 0.5
         drug2 = "c2"
-        self.assertEqual(M[drug_to_index[drug1]][drug_to_index[drug2]], 0.5)
+        self.assertAlmostEqual(M[drug_to_index[drug1]][drug_to_index[drug2]], 0.5)
         # c1-c3 similarity cor([1,0,0], [1,0,1]) == 0.5
         drug2 = "c3"
-        self.assertEqual(M[drug_to_index[drug1]][drug_to_index[drug2]], 0.5)
+        self.assertAlmostEqual(M[drug_to_index[drug1]][drug_to_index[drug2]], 0.5)
         # c1-c4 similarity cor([1,0,0], [0,0,1]) == -0.5
         drug2 = "c4"
-        self.assertEqual(M[drug_to_index[drug1]][drug_to_index[drug2]], -0.5)
+        self.assertAlmostEqual(M[drug_to_index[drug1]][drug_to_index[drug2]], -0.5)
 
 
     def test_get_similarity_based_scores_knn2(self):
@@ -102,12 +102,12 @@ class TestUtilityMethods(unittest.TestCase):
         disease_to_drugs = dict([("p1", set(["c1"])), ("p2", set(["c2"]))])
         # Get similarity between all pair of drugs
         drug_to_index, M = get_similarity(self.drugs, self.drug_to_values)
-            list_M_similarity = [ M ]
-            knn = 2
+        list_M_similarity = [ M ]
+        knn = 2
         drug_to_disease_to_scores = get_similarity_based_scores(self.drugs, disease_to_drugs, drug_to_index, list_M_similarity, knn)
         # c1's similarity to c2, c3, c4: 0.5, 0.5, -0.5
         # c1's score for p2: 0.5*label(c2) + 0.5*label(c3) = 0.5 * 1 + 0 = 0.5
-        self.assertEqual(drug_to_disease_to_scores["c1"]["p2"][0], 0.5)
+        self.assertAlmostEqual(drug_to_disease_to_scores["c1"]["p2"][0], 0.5)
 
 
 if __name__ == "__main__":

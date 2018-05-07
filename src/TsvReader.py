@@ -130,7 +130,7 @@ class TsvReader(FormattedFileProcessor):
                     else:
                         out_method("%s\n" % "\t".join([ vals[columns[f]] for f in fields_to_include ]))
             except: #Exception, e: 
-                    #print "In: ", __file__, e, vals
+                #print "In: ", __file__, e, vals
                 print line_prev, line 
                 import traceback
                 traceback.print_exc()
