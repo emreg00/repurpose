@@ -17,9 +17,9 @@ def main():
     CONFIG = configuration.Configuration(config_file, config_section) 
     n_seed = int(CONFIG.get("random_seed"))
     if n_seed != -1:
-	random.seed(n_seed) # for reproducibility
+        random.seed(n_seed) # for reproducibility
     else:
-	n_seed = None
+        n_seed = None
     n_run = int(CONFIG.get("n_run"))
     knn = int(CONFIG.get("knn"))
     model_type = CONFIG.get("model_type")
@@ -28,9 +28,9 @@ def main():
     recalculate_similarity = CONFIG.get_boolean("recalculate_similarity") 
     disjoint_cv = CONFIG.get_boolean("disjoint_cv") 
     try:
-	split_both = CONFIG.get_boolean("pairwise_disjoint") 
+        split_both = CONFIG.get_boolean("pairwise_disjoint") 
     except:
-	split_both = False
+        split_both = False
     output_file = CONFIG.get("output_file")
     n_fold = int(CONFIG.get("n_fold"))
     n_proportion = int(CONFIG.get("n_proportion"))
